@@ -64,7 +64,7 @@ class Modell {
         public void run() {
 
             cycle = new Runnable() {
-                public void run() {
+                public void run() {                        
                     if (!pause && spiller) {
                         spillekart.oppdater();
 

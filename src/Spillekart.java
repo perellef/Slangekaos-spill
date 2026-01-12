@@ -1,16 +1,17 @@
 package src;
 import java.util.Random;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.awt.Color;
 
 import java.lang.Math;
 import java.util.Iterator;
+import java.util.List;
 
 class Spillekart {
 
     private Rute[][] rutenett;
-    private Slange spillerSlange;
-    private ArrayList<Slange> andreSlanger = new ArrayList<>();
+    private ArrayList<Slange> slanger = new ArrayList<>(); // indeks 0: spillerslange
 
     private Random rand = new Random();
     private ArrayList<Rute> mat = new ArrayList<>();
@@ -36,7 +37,7 @@ class Spillekart {
 
         bevegSlanger();
         fjernSpistMat();
-        finnDodeSlanger();
+        splittDodeMorslanger();
         fjernForsvunnedeSlanger();
         utplasserMat();
         utplasserAIslange();
@@ -46,14 +47,13 @@ class Spillekart {
     }
 
     public boolean sjekkOmILive() {
-        return spillerSlange.sjekkOmILive();
+        return slanger.get(0).sjekkOmILive();
     }
 
     public void fjernAltFraKartet() {
         
         mat.clear();
-        spillerSlange = null; 
-        andreSlanger.clear();
+        slanger.clear();
 
         for (int rad = 0; rad<rutenett.length; rad++) {
             for (int kol = 0; kol<rutenett[rad].length; kol++) {
@@ -63,9 +63,8 @@ class Spillekart {
     }
 
     private void bevegSlanger() {
-        spillerSlange.bevegSlange();
-        for (int i = 0; i<andreSlanger.size(); i++) {
-            andreSlanger.get(i).bevegSlange();
+        for (int i = 0; i<slanger.size(); i++) {
+            slanger.get(i).bevegSlange();
         }
     }
 
@@ -82,16 +81,9 @@ class Spillekart {
         }
     }
 
-    private void finnDodeSlanger() {
-        spillerSlange.sjekkOmILive();
-        for (int i = 0; i<andreSlanger.size(); i++) {
-            andreSlanger.get(i).sjekkOmILive();
-        }
-    }
-
     public void utplasserAIslange() {
 
-        if (andreSlanger.size()>100) {
+        if (slanger.size()>100) {
             return;
         }
 
@@ -158,17 +150,59 @@ class Spillekart {
         Color farge = Color.BLUE;
         int fart = 7;
 
-        spillerSlange = new Slange(this,hode,hale,"opp",farge,fart,0);
+        Slange spillerSlange = new Slange(this,hode,hale,"opp",farge,fart,0,"spiller");
 
         hode.plussHode(spillerSlange);
         haledel.plussHale(spillerSlange);
         haletupp.plussHale(spillerSlange);
+
+        slanger.add(spillerSlange);
+    }
+
+    public void splittDodeMorslanger() {
+        Iterator<Slange> iterator = slanger.iterator(); // iterator tar over for a kunne fjerne elementer mens iterering foregar
+        iterator.next();
+
+        List<Slange> nyeSlanger = new ArrayList<>();
+
+        while (iterator.hasNext()) {
+            Slange slange = iterator.next();
+
+            if (!slange.sjekkOmILive() && slange.erMorslange()) {
+                ArrayList<Slange> barn = splittMorslange(slange);
+                if (!barn.isEmpty()) { 
+                    nyeSlanger.addAll(barn);
+                    iterator.remove();
+                }
+            }
+        }
+        slanger.addAll(nyeSlanger);
+    }
+
+    public ArrayList<Slange> splittMorslange(final Slange slange) {
+        ArrayList<Slange> barn = new ArrayList<>();
+        int antallBarn = (slange.hentHale().size()+1)/3;
+        if (antallBarn < 2) {
+            return barn;
+        }
+
+        for (int i = 0; i < antallBarn; i++) {
+            Rute hode = slange.hentHale().get(3*i);
+            ArrayList<Rute> hale = new ArrayList<>();
+            hale.add(slange.hentHale().get(3*i+1));
+
+            Slange babyslange = new Slange(this,hode,hale,slange.hentRetning(),slange.hentBakgrunnsfarge(),slange.hentFart(),0,"morslange");
+            
+            barn.add(babyslange);
+        }
+        slange.fjern();
+        return barn;
     }
 
     public void fjernForsvunnedeSlanger() {
+        Iterator<Slange> iterator = slanger.iterator(); // iterator tar over for a kunne fjerne elementer mens iterering foregar
+        iterator.next();
 
-        Iterator<Slange> iterator = andreSlanger.iterator(); // iterator tar over for a kunne fjerne elementer mens iterering foregar
-            
         while (iterator.hasNext()) {
             Slange slange = iterator.next();
 
@@ -196,22 +230,42 @@ class Spillekart {
         if (trekk<=5000) {
             maksfart = 3 + (int) Math.floor(trekk*7/5000);
         } else {
-            maksfart = 10;        
+            maksfart = 9;        
         }
-
         int fart = rand.nextInt(maksfart)+1; // 3-10, [0, 100s] ->[0,5000 trekk], 3+7/5000
 
-        int storrelse = rand.nextInt(spillerSlange.matSpist()+1)+1;
+        String slangetype = velgSlangetype();
 
-        Slange aiSlange = new Slange(this,hode,hale,retning,farge,fart,storrelse);
+        int storrelse = rand.nextInt(slanger.get(0).matSpist()+1)+1;
+        if (slangetype == "drapsslange") {
+            storrelse = Math.min(slanger.get(0).matSpist()/3+1, rand.nextInt(2,6));
+        } else if (slangetype == "fluktslange") {
+            storrelse = Math.min(slanger.get(0).matSpist()+1, rand.nextInt(2,6));
+        }
+        System.out.println(slangetype);
 
-        andreSlanger.add(aiSlange);
+        Slange aiSlange = new Slange(this, hode, hale, retning, farge, fart, storrelse, slangetype);
+        slanger.add(aiSlange);
+    }
+
+    public String velgSlangetype() {
+        List<String> options = new ArrayList<>();
+        
+        options.add("matslange");
+
+        if (trekk > 1000) {options.add("fluktslange");}
+        if (trekk > 2000) {options.add("drapsslange");}
+        if (trekk > 2750) {options.add("morslange");}
+        if (trekk > 3000) {options.add("spøkelsesslange");}
+
+        Random rand = new Random();
+        return options.get(rand.nextInt(options.size()));
     }
 
     public void endreRetningAIslanger() {
-        for (Slange slange : andreSlanger) {
-            if (slange.sjekkOmILive()) {
-                slange.oppdaterRetning();
+        for (int i = 1; i < slanger.size(); i++) {
+            if (slanger.get(i).sjekkOmILive()) {
+                slanger.get(i).oppdaterRetning();
             }
         }
     }
@@ -229,11 +283,11 @@ class Spillekart {
     }
 
     public void nyRetningSpillerSlange(String onsketRetning) {
-        spillerSlange.nyRetning(onsketRetning);
+        slanger.get(0).nyRetning(onsketRetning);
     }
 
     public int scoreSpillerSlange() {
-        return spillerSlange.matSpist() * spillerSlange.hentFart();
+        return slanger.get(0).matSpist() * slanger.get(0).hentFart();
     }
 
     public boolean erFare(int rad, int kol) {
@@ -270,18 +324,30 @@ class Spillekart {
         return mat;
     }
 
+    public ArrayList<Slange> hentSlanger() {
+        return slanger;
+    }
+
     public double avstandSpiller(Rute rute) {
 
         int rad1 = rute.hentRad();
         int kol1 = rute.hentKol();
 
-        int rad2 = spillerSlange.hentHode().hentRad();
-        int kol2 = spillerSlange.hentHode().hentKol();
+        int rad2 = slanger.get(0).hentHode().hentRad();
+        int kol2 = slanger.get(0).hentHode().hentKol();
 
         return Math.sqrt((rad1-rad2)*(rad1-rad2)+(kol1-kol2)*(kol1-kol2));
     }
 
     public int hentTrekk() {
         return trekk;
+    }
+
+    public int antallRader() {
+        return rutenett.length;
+    }
+
+    public int antallKolonner() {
+        return rutenett[0].length;
     }
 }

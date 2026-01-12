@@ -26,7 +26,9 @@ class Slange {
     private int trekkTeller = 0;
     private int vokser;
 
-    public Slange(Spillekart spillekart, Rute hode, ArrayList<Rute> hale, String retning, Color startfarge, int fart, int vokser) {
+    private String slangetype;
+
+    public Slange(Spillekart spillekart, Rute hode, ArrayList<Rute> hale, String retning, Color startfarge, int fart, int vokser, String slangetype) {
         this.spillekart = spillekart;
         this.hode = hode;
         this.hale = hale;
@@ -36,6 +38,7 @@ class Slange {
         this.farge = startfarge;
         this.fart = fart;
         this.vokser = vokser;
+        this.slangetype = slangetype;
     }
 
     public void bevegSlange() {
@@ -133,15 +136,21 @@ class Slange {
     }
 
     public void oppdaterRetning() {
-
         if (10-trekkTeller>fart) {
             return;
         }
-        nyRetning = AISlangeOppforsel.finnRetning(spillekart,this);
+        if (slangetype == "drapsslange") {
+            nyRetning = AISlangeOppforsel.motSlange(spillekart,this);
+        } else if (slangetype == "fluktslange") {
+            nyRetning = AISlangeOppforsel.motSikkerhet(spillekart,this);
+        } else if (slangetype == "matslange" || slangetype == "spøkelsesslange" || slangetype == "morslange") {
+            nyRetning = AISlangeOppforsel.motMat(spillekart,this);
+        } else {
+            System.out.println("Ukjent slangetype");
+        }
     }
 
     public void nyRetning(String onsketRetning) {
-        
         if ((retning.equals("opp") || retning.equals("ned")) && (onsketRetning.equals("venstre") || onsketRetning.equals("hoyre"))) {
             nyRetning = onsketRetning;
             return;
@@ -152,13 +161,31 @@ class Slange {
         }
     }
 
-    public Color hentFarge() {
+    public Color hentBakgrunnsfarge() {
         return farge;
     }
 
+    public Color hentSkriftfarge() {
+        Color skriftfarge; 
+        if (slangetype == "spiller") {
+            skriftfarge = Color.BLACK;
+        } else if (slangetype == "fluktslange") {
+            skriftfarge = Color.WHITE;
+        } else if (slangetype == "spøkelsesslange") {
+            skriftfarge = Color.MAGENTA;
+        } else if (slangetype == "drapsslange") {
+            skriftfarge = Color.RED;
+        } else if (slangetype == "morslange") {
+            skriftfarge = Color.GREEN;
+        } else {
+            skriftfarge =Color.LIGHT_GRAY;
+        }
+        return vektetGjennomsnitt(skriftfarge, Color.LIGHT_GRAY, ((double) aatsel)/aatselLevetid);
+    }
+
+
     @Override
     public String toString() {
-
         String str = "";
             
         if (hode != null) {
@@ -187,6 +214,10 @@ class Slange {
     public Rute hentHode() {
         return hode;
     }
+    
+    public ArrayList<Rute> hentHale() {
+        return hale;
+    }
 
     public boolean forsvunnet() {
         return aatsel <= 0;
@@ -204,23 +235,26 @@ class Slange {
     }
 
     public void nyFarge() {
+        farge = vektetGjennomsnitt(startfarge, Color.LIGHT_GRAY, ((double) aatsel)/aatselLevetid);
+    }
 
-        Color bakgrunnsfarge = Color.LIGHT_GRAY;
+    public Color vektetGjennomsnitt(Color farge1, Color farge2, double w) {
+        int r1 = farge1.getRed();
+        int g1 = farge1.getGreen();
+        int b1 = farge1.getBlue();
 
-        int r1 = bakgrunnsfarge.getRed();
-        int g1 = bakgrunnsfarge.getGreen();
-        int b1 = bakgrunnsfarge.getBlue();
-
-        int r2 = startfarge.getRed();
-        int g2 = startfarge.getGreen();
-        int b2 = startfarge.getBlue();
-
-        double w = 1-((double) aatsel)/aatselLevetid;
+        int r2 = farge2.getRed();
+        int g2 = farge2.getGreen();
+        int b2 = farge2.getBlue();
 
         int r = (int) Math.sqrt(r1*r1*w + r2*r2*(1 - w));
         int g = (int) Math.sqrt(g1*g1*w + g2*g2*(1 - w));
         int b = (int) Math.sqrt(b1*b1*w + b2*b2*(1 - w));
 
-        farge = new Color(r,g,b);
+        return new Color(r,g,b);
+    }
+
+    public boolean erMorslange() {
+        return slangetype == "morslange";
     }
 }

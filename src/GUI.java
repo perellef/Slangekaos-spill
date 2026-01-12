@@ -248,19 +248,10 @@ class GUI {
                 JLabel label = rutenett[rad][kol];
 
                 String tekst = rute.hentTekst();
-                Color farge = rute.hentFarge();
 
                 label.setText(tekst);
-
-                if (rute.harMat()) {
-                    label.setForeground(Color.RED);
-                } else if (farge.equals(Color.BLUE)) {
-                    label.setForeground(Color.BLACK);
-                } else {
-                    label.setForeground(Color.LIGHT_GRAY);
-                }
-
-                label.setBackground(farge);
+                label.setForeground(rute.hentSkriftfarge());
+                label.setBackground(rute.hentBakgrunnsfarge());
                 label.setOpaque(true);
             }
         }

@@ -15,13 +15,25 @@ class Rute {
         this.kol = kol;
     }
 
-    public Color hentFarge() {
-
+    public Color hentBakgrunnsfarge() {
         if (antallHoder()>=1) {
-            return hoder.get(0).hentFarge();
+            return hoder.get(0).hentBakgrunnsfarge();
         }
         else if (antallHaler()>=1) {
-            return haler.get(0).hentFarge();
+            return haler.get(0).hentBakgrunnsfarge();
+        }
+        return Color.LIGHT_GRAY;
+    }
+
+    public Color hentSkriftfarge() {
+        if (harMat()) {
+            return Color.RED;
+        }
+        if (antallHoder()>=1) {
+            return hoder.get(0).hentSkriftfarge();
+        }
+        else if (antallHaler()>=1) {
+            return haler.get(0).hentSkriftfarge();
         }
         return Color.LIGHT_GRAY;
     }
@@ -89,5 +101,9 @@ class Rute {
 
     public String toString() {
         return "(" + rad + "," + kol + ")";
+    }
+
+    public int manhattenDistance(final Rute rute) {
+        return Math.abs(rute.rad - rad) + Math.abs(rute.kol - kol);
     }
 }

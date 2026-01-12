@@ -1,6 +1,10 @@
 package src;
 import java.util.Random;
+import java.util.stream.Stream;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 class AISlangeOppforsel {
 
@@ -33,22 +37,8 @@ class AISlangeOppforsel {
 
         return retning;
     }
-
-    public static String finnRetning(Spillekart spillekart, Slange slange) {
-
-        int strategi = rand.nextInt(3);
-        /*
-        if (strategi==0) {
-            return tilfeldig(spillekart,slange);
-        }
-        else if (strategi==1) {
-            return flukt(spillekart,slange);
-        }
-        */
-        return motMat(spillekart,slange);
-    }
     
-    private static String motMat(Spillekart spillekart, Slange slange) {
+    public static String motMat(Spillekart spillekart, Slange slange) {
 
         ArrayList<Rute> mat = spillekart.hentMat();
 
@@ -78,6 +68,145 @@ class AISlangeOppforsel {
         
         int radDiff = mat.get(indeks).hentRad() - rad;
         int kolDiff = mat.get(indeks).hentKol() - kol;
+
+        String[] retninger = new String[2]; 
+
+        if (radDiff<=0) {
+            retninger[0] = "opp";
+        } else {
+            retninger[0] = "ned";
+        }
+
+        if (kolDiff<=0) {
+            retninger[1] = "venstre";
+        } else {
+            retninger[1] = "hoyre";
+        }
+
+        String nyRetning;
+        if (retning.equals("hoyre") && retninger[1].equals("venstre")) {
+            nyRetning = retninger[0];
+        }
+        else if (retning.equals("venstre") && retninger[1].equals("hoyre")) {
+            nyRetning = retninger[0];
+        }
+        else if (retning.equals("opp") && retninger[0].equals("ned")) {
+            nyRetning = retninger[1];
+        }
+        else if (retning.equals("ned") && retninger[0].equals("opp")) {
+            nyRetning = retninger[1];
+        }
+        else {
+
+            double vertikalt = (radDiff*radDiff)*rand.nextDouble();
+            double horisontalt = (radDiff*radDiff)*rand.nextDouble();
+
+            if (vertikalt>horisontalt) {
+                nyRetning = retninger[0];
+            }
+            else {
+                nyRetning = retninger[1];
+            }
+        }
+        
+        return vurderFlukt(spillekart,slange,nyRetning);
+    }
+
+    public static String motSikkerhet(Spillekart spillekart, Slange slange) {
+        ArrayList<Slange> slanger = spillekart.hentSlanger();
+
+        Rute slangehode = slange.hentHode();
+        int rad = slangehode.hentRad();
+        int kol = slangehode.hentKol();
+
+        Rute tv = new Rute(0, 0);
+        Rute th = new Rute(0, spillekart.antallKolonner());
+        Rute bv = new Rute(spillekart.antallRader(), 0);
+        Rute bh = new Rute(spillekart.antallRader(), spillekart.antallKolonner());
+
+        Rute annetSlangehode;
+        for (int i = 0; i<slanger.size(); i++) {
+            if (slange == slanger.get(i)) {
+                continue;
+            }
+            if (!slanger.get(i).sjekkOmILive()) {
+                continue;
+            }
+
+            annetSlangehode = slanger.get(i).hentHode();
+            
+            if (annetSlangehode.hentRad() <= rad && annetSlangehode.hentKol() <= kol && annetSlangehode.manhattenDistance(slangehode) < tv.manhattenDistance(slangehode)) {
+                tv = annetSlangehode;
+            }
+            if (annetSlangehode.hentRad() <= rad && annetSlangehode.hentKol() >= kol && annetSlangehode.manhattenDistance(slangehode) < th.manhattenDistance(slangehode)) {
+                th = annetSlangehode;
+            }
+            if (annetSlangehode.hentRad() >= rad && annetSlangehode.hentKol() <= kol && annetSlangehode.manhattenDistance(slangehode) < bv.manhattenDistance(slangehode)) {
+                bv = annetSlangehode;
+            }
+            if (annetSlangehode.hentRad() >= rad && annetSlangehode.hentKol() >= kol && annetSlangehode.manhattenDistance(slangehode) < bh.manhattenDistance(slangehode)) {
+                bh = annetSlangehode;
+            }
+        }
+
+        Map<String, Integer> map = new HashMap<>();
+
+        map.put("opp", slangehode.hentRad()-(tv.hentRad() + th.hentRad())/2);
+        map.put("ned", (bv.hentRad() + bh.hentRad())/2-slangehode.hentRad());
+        map.put("hoyre", (th.hentKol() + bh.hentKol())/2-slangehode.hentKol());
+        map.put("venstre", slangehode.hentKol()-(tv.hentKol() + bv.hentKol())/2);
+
+        String retning = slange.hentRetning();
+
+        String nyRetning = map.entrySet()
+            .stream()
+            .filter(entry -> !entry.getKey().equals(motsattRetning(retning)))
+            .max(Map.Entry.comparingByValue())
+            .map(Map.Entry::getKey)
+            .orElse(retning);
+
+        return vurderFlukt(spillekart, slange, nyRetning);
+    }
+    
+    public static String motSlange(Spillekart spillekart, Slange slange) {
+
+        ArrayList<Slange> slanger = spillekart.hentSlanger();
+
+        int rad = slange.hentHode().hentRad();
+        int kol = slange.hentHode().hentKol();
+
+        String retning = slange.hentRetning();
+
+        double slangeRad = slanger.get(0).hentHode().hentRad();
+        double slangeKol = slanger.get(0).hentHode().hentKol();
+
+        double avstand1 = (slangeRad-rad)*(slangeRad-rad) + (slangeKol-kol)*(slangeKol-kol);
+
+        int indeks = 0;
+        for (int i = 1; i<slanger.size(); i++) {
+            if (slange == slanger.get(i)) {
+                continue;
+            }
+            if (!slanger.get(i).sjekkOmILive()) {
+                continue;
+            }
+            if (slanger.get(i).hentRetning() == slange.hentRetning()) {
+                continue;
+            }
+
+            slangeRad = slanger.get(i).hentHode().hentRad();
+            slangeKol = slanger.get(i).hentHode().hentKol();
+            
+            double avstand2 = (slangeRad-rad)*(slangeRad-rad) + (slangeKol-kol)*(slangeKol-kol);
+
+            if (avstand1 > avstand2) {
+                avstand1 = avstand2;
+                indeks = i;
+            }
+        }
+        
+        int radDiff = slanger.get(indeks).hentHode().hentRad() - rad;
+        int kolDiff = slanger.get(indeks).hentHode().hentKol() - kol;
 
         String[] retninger = new String[2]; 
 
@@ -229,5 +358,18 @@ class AISlangeOppforsel {
         String nyRetning = retninger[rand.nextInt(3)];
 
         return nyRetning;
+    }
+
+    public static String motsattRetning(final String retning) {
+        if (retning == "opp") {
+            return "ned"; 
+        } else if (retning == "ned") {
+            return "opp";
+        } else if (retning == "hoyre") {
+            return "venstre";
+        } else if (retning == "venstre") {
+            return "hoyre";
+        }
+        return null;
     }
 }
