@@ -162,6 +162,9 @@ class Slange {
     }
 
     public Color hentBakgrunnsfarge() {
+        if (slangetype == "spøkelsesslange") {
+            return Color.LIGHT_GRAY;
+        }
         return farge;
     }
 

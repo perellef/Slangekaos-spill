@@ -242,7 +242,6 @@ class Spillekart {
         } else if (slangetype == "fluktslange") {
             storrelse = Math.min(slanger.get(0).matSpist()+1, rand.nextInt(2,6));
         }
-        System.out.println(slangetype);
 
         Slange aiSlange = new Slange(this, hode, hale, retning, farge, fart, storrelse, slangetype);
         slanger.add(aiSlange);
